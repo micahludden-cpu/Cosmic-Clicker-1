@@ -1,0 +1,599 @@
+# Cosmic-Clicker-1
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Cosmic Architect - Build Your Universe</title>
+  <style>
+    :root {
+      --bg: #03040b;
+      --card-bg: rgba(255, 255, 255, 0.05);
+      --card-hover: rgba(255, 255, 255, 0.1);
+      --accent: #ffd166;
+      --accent-dm: #c084fc;
+      --text: #f0f4f8;
+      --muted: #94a3b8;
+      --border: rgba(255, 255, 255, 0.12);
+      --primary-btn: #3b82f6;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at center, #0d1322 0%, var(--bg) 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    #universe-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Top Navigation / Stats Bar */
+    header {
+      z-index: 10;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 20px;
+      background: rgba(3, 4, 11, 0.85);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+
+    .brand-group h1 {
+      font-size: 1.4rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, #ff9a9e, #ffd166, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .player-title {
+      font-size: 0.8rem;
+      color: var(--accent-dm);
+      font-weight: 600;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-sm {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .btn-sm:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .btn-sm.active {
+      border-color: #48bb78;
+      color: #68d391;
+    }
+
+    .dm-badge {
+      background: rgba(192, 132, 252, 0.15);
+      border: 1px solid var(--accent-dm);
+      color: var(--accent-dm);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+
+    /* Active Multiplier Bar */
+    #buff-banner {
+      z-index: 10;
+      background: linear-gradient(90deg, #ef4444, #f59e0b);
+      color: white;
+      text-align: center;
+      padding: 6px 12px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      display: none;
+      box-shadow: 0 2px 10px rgba(239, 68, 68, 0.5);
+    }
+
+    /* Main Container */
+    .game-container {
+      display: flex;
+      flex: 1;
+      z-index: 10;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 16px;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .game-container {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+
+    /* Left Panel: Clicker */
+    .nexus-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 300px;
+      position: relative;
+    }
+
+    .stats-block {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .stardust-label {
+      font-size: 2.6rem;
+      font-weight: 800;
+      color: var(--accent);
+      text-shadow: 0 0 20px rgba(255, 209, 102, 0.4);
+    }
+
+    .sub-stats {
+      margin-top: 6px;
+      font-size: 0.95rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .star-wrapper {
+      position: relative;
+      cursor: pointer;
+      margin: 20px 0;
+    }
+
+    .star-core {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fff7b2 0%, #ff9800 60%, #e65100 100%);
+      box-shadow: 0 0 50px #ff9800, 0 0 100px rgba(230, 81, 0, 0.6), inset 0 0 25px #ffffff;
+      transition: transform 0.05s ease, filter 0.05s ease;
+      animation: pulse 4s infinite ease-in-out;
+    }
+
+    .star-core:active {
+      transform: scale(0.92);
+      filter: brightness(1.25);
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 45px #ff9800, 0 0 80px rgba(230, 81, 0, 0.5); }
+      50% { transform: scale(1.05); box-shadow: 0 0 65px #ffb74d, 0 0 110px rgba(255, 112, 67, 0.7); }
+    }
+
+    /* Floating Tap Numbers */
+    .click-particle {
+      position: absolute;
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.25rem;
+      pointer-events: none;
+      animation: floatFade 0.8s ease-out forwards;
+      text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+      z-index: 100;
+    }
+
+    @keyframes floatFade {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-70px) scale(1.2); }
+    }
+
+    /* Drifting Anomaly */
+    .drifting-anomaly {
+      position: fixed;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      box-shadow: 0 0 25px rgba(255, 255, 255, 0.8);
+      animation: spin 6s linear infinite;
+    }
+
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Right Panel: Tabbed Upgrades */
+    .store-panel {
+      flex: 1.3;
+      width: 100%;
+      max-width: 650px;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      display: flex;
+      flex-direction: column;
+      height: 75vh;
+      overflow: hidden;
+    }
+
+    .tabs-header {
+      display: flex;
+      background: rgba(0, 0, 0, 0.3);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 12px 10px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: bold;
+      cursor: pointer;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      color: #fff;
+      border-bottom-color: var(--accent);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* Upgrade Cards */
+    .upgrade-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .upgrade-card:hover:not(.disabled) {
+      background: var(--card-hover);
+      border-color: rgba(255, 209, 102, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .upgrade-card.disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .card-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card-icon {
+      font-size: 2rem;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .card-subtitle {
+      font-size: 0.78rem;
+      color: #90cdf4;
+      margin-top: 2px;
+    }
+
+    .card-right {
+      text-align: right;
+    }
+
+    .card-count {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .card-cost {
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      margin-top: 2px;
+    }
+
+    /* Prestige Tab Styling */
+    .prestige-box {
+      text-align: center;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .prestige-btn {
+      background: linear-gradient(135deg, #7c3aed, #db2777);
+      border: none;
+      color: white;
+      font-weight: bold;
+      font-size: 1.1rem;
+      padding: 14px 28px;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.5);
+      transition: transform 0.2s;
+    }
+
+    .prestige-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .prestige-btn:hover:not(:disabled) {
+      transform: scale(1.04);
+    }
+
+    /* Toast Notification */
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--accent);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      z-index: 1000;
+      transition: transform 0.3s ease;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="universe-canvas"></canvas>
+
+  <header>
+    <div class="brand-group">
+      <h1>Cosmic Architect</h1>
+      <div class="player-title" id="player-title-display">Title: Stardust Seeker</div>
+    </div>
+    <div class="header-controls">
+      <div class="dm-badge" id="dm-counter-display">🔮 0 Dark Matter</div>
+      <button class="btn-sm" id="mute-btn">🔊 Sound: ON</button>
+      <button class="btn-sm" id="autotap-btn" style="display:none;">🤖 Auto-Tap: OFF</button>
+      <button class="btn-sm" id="autobuy-btn" style="display:none;">⚡ Auto-Buy: OFF</button>
+      <button class="btn-sm" id="save-btn">💾 Save</button>
+      <button class="btn-sm" id="reset-btn">🗑️ Reset</button>
+    </div>
+  </header>
+
+  <div id="buff-banner">⚡ GAMMA-RAY BURST! 7x Stardust for <span id="buff-timer">30</span>s!</div>
+
+  <main class="game-container">
+    <!-- Star Nexus Panel -->
+    <section class="nexus-panel">
+      <div class="stats-block">
+        <div class="stardust-label" id="stardust-display">0 Stardust</div>
+        <div class="sub-stats">
+          <span id="sps-display">+0 / sec</span>
+          <span id="tap-display">+1 per tap</span>
+        </div>
+      </div>
+
+      <div class="star-wrapper" id="star-target">
+        <div class="star-core"></div>
+      </div>
+    </section>
+
+    <!-- Upgrades / Shop Panel -->
+    <section class="store-panel">
+      <div class="tabs-header">
+        <button class="tab-btn active" data-tab="celestial">🌌 Celestial</button>
+        <button class="tab-btn" data-tab="anomalies">🌀 Anomalies</button>
+        <button class="tab-btn" data-tab="tap">⚡ Tap Power</button>
+        <button class="tab-btn" data-tab="artifacts">🏛️ Artifacts</button>
+        <button class="tab-btn" data-tab="prestige">🔮 Big Crunch</button>
+        <button class="tab-btn" data-tab="achievements">🏆 Milestones</button>
+      </div>
+
+      <div class="tab-content" id="tab-content-area"></div>
+    </section>
+  </main>
+
+  <div id="toast">Game Saved!</div>
+
+  <script>
+    // --- PROCEDURAL WEB AUDIO SYNTHESIZER ---
+    let audioCtx = null;
+    let soundEnabled = true;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playSound(type) {
+      if (!soundEnabled) return;
+      initAudio();
+      const now = audioCtx.currentTime;
+
+      if (type === 'tap') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(320 + Math.random() * 80, now);
+        osc.frequency.exponentialRampToValueAtTime(120, now + 0.08);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      } else if (type === 'buy') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.07);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.22);
+      } else if (type === 'event') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.35);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      } else if (type === 'fanfare') {
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + i * 0.08);
+          gain.gain.setValueAtTime(0.15, now + i * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.08 + 0.25);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + i * 0.08);
+          osc.stop(now + i * 0.08 + 0.25);
+        });
+      } else if (type === 'crunch') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(32, now + 0.9);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.9);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.9);
+      }
+    }
+
+    // --- GAME DATA STRUCTURES ---
+    const celestialUpgrades = [
+      { id: 'comet', name: 'Comet Swarm', icon: '☄️', baseCost: 15, cost: 15, sps: 1, count: 0, visualColor: '#90cdf4' },
+      { id: 'moon', name: 'Barren Moon', icon: '🌑', baseCost: 100, cost: 100, sps: 8, count: 0, visualColor: '#cbd5e0' },
+      { id: 'terrestrial', name: 'Rocky Planet', icon: '🌍', baseCost: 1100, cost: 1100, sps: 60, count: 0, visualColor: '#68d391' },
+      { id: 'gasgiant', name: 'Gas Giant', icon: '🪐', baseCost: 12000, cost: 12000, sps: 450, count: 0, visualColor: '#f6ad55' },
+      { id: 'nebula', name: 'Radiant Nebula', icon: '🌌', baseCost: 130000, cost: 130000, sps: 3200, count: 0, visualColor: '#b794f4' },
+      { id: 'blackhole', name: 'Supermassive Black Hole', icon: '🕳️', baseCost: 1400000, cost: 1400000, sps: 25000, count: 0, visualColor: '#fc8181' }
+    ];
+
+    const anomalyUpgrades = [
+      { id: 'pulsar', name: 'Magnetar / Pulsar', icon: '⏱️', baseCost: 18000000, cost: 18000000, sps: 180000, count: 0, visualColor: '#67e8f9' },
+      { id: 'quasar', name: 'Quasar Core', icon: '🌟', baseCost: 250000000, cost: 250000000, sps: 1200000, count: 0, visualColor: '#fde047' },
+      { id: 'string', name: 'Cosmic String', icon: '⏳', baseCost: 3500000000, cost: 3500000000, sps: 9500000, count: 0, visualColor: '#ec4899' },
+      { id: 'rift', name: 'Void Rift', icon: '👁️', baseCost: 50000000000, cost: 50000000000, sps: 75000000, count: 0, visualColor: '#a855f7' },
+      { id: 'dyson', name: 'Dyson Sphere Nexus', icon: '🌌', baseCost: 800000000000, cost: 800000000000, sps: 600000000, count: 0, visualColor: '#fbbf24' }
+    ];
+
+    const tapUpgrades = [
+      { id: 'flare', name: 'Solar Flare', icon: '☀️', baseCost: 25, cost: 25, power: 1, count: 0 },
+      { id: 'fusion', name: 'Fusion Tap', icon: '⚛️', baseCost: 250, cost: 250, power: 5, count: 0 },
+      { id: 'supernova', name: 'Supernova Burst', icon: '💥', baseCost: 2500, cost: 2500, power: 25, count: 0 },
+      { id: 'cosmicray', name: 'Cosmic Ray Focus', icon: '⚡', baseCost: 25000, cost: 25000, power: 150, count: 0 },
+      { id: 'singularity', name: 'Singularity Touch', icon: '🌀', baseCost: 250000, cost: 250000, power: 1000, count: 0 },
+      { id: 'darkinfusion', name: 'Dark Matter Infusion', icon: '🔮', baseCost: 5000000, cost: 5000000, power: 10000, count: 0 },
+      { id: 'warp', name: 'Quantum Warp Tap', icon: '🪐', baseCost: 100000000, cost: 100000000, power: 100000, count: 0 }
+    ];
+
+    const artifacts = [
+      { id: 'harvester', name: 'Auto-Stardust Harvester', icon: '🤖', cost: 15, level: 0, maxLevel: 5, desc: 'Taps the star automatically (Level 1: 1/s, Level 5: 12/s).' },
+      { id: 'autobuyer', name: 'Auto-Buyer Core', icon: '⚡', cost: 30, level: 0, maxLevel: 3, desc: 'Automatically buys the cheapest affordable upgrade.' },
+      { id: 'chronos', name: 'Chronos Lens', icon: '⏳', cost: 10, level: 0, maxLevel: 5, desc: 'Increases anomaly event buff durations by +6s per level.' },
+      { id: 'anchor', name: 'Gravitational Anchor', icon: '🧲', cost: 20, level: 0, maxLevel: 8, desc: 'Reduces Celestial & Tap upgrade prices by 5% per level.' },
+      { id: 'genesis', name: 'Stellar Genesis', icon: '🌟', cost: 15, level: 0, maxLevel: 5, desc: 'Start every new universe with bonus initial Stardust.' },
+      { id: 'singularity_art', name: 'Cosmic Singularity', icon: '👁️', cost: 35, level: 0, maxLevel: 5, desc: 'Boosts multiplier per unspent Dark Matter by +3% per level.' }
+    ];
+
+    const achievements = [
+      { id: 'clicks_10', name: 'First Spark', icon: '🌟', desc: 'Tap the star 10 times.', rewardDM: 1, title: 'Stardust Seeker', req: () => stats.totalClicks >= 10, unlocked: false },
+      { id: 'clicks_1000', name: 'Hyper Clicker', icon: '⚡', desc: 'Tap the star 1,000 times.', rewardDM: 10, title: 'Star Tender', req: () => stats.totalClicks >= 1000, unlocked: false },
+      { id: 'anomalies_5', name: 'Cosmic Interceptor', icon: '☄️', desc: 'Catch 5 drifting Anomaly Events.', rewardDM: 5, title: 'Comet Chaser', req: () => stats.anomaliesCaught >= 5, unlocked: false },
+      { id: 'solar_sys', name: 'Architect of Orbits', icon: '🌍', desc: 'Own at least 1 Comet, Moon, Planet, & Gas Giant.', rewardDM: 8, title: 'Solar Architect', req: () => celestialUpgrades.slice(0, 4).every(i => i.count > 0), unlocked: false },
+      { id: 'first_bh', name: 'Event Horizon', icon: '🕳️', desc: 'Purchase your first Black Hole.', rewardDM: 20, title: 'Singularity Master', req: () => celestialUpgrades[5].count > 0, unlocked: false },
+      { id: 'first_crunch', name: 'Universal Rebirth', icon: '🌀', desc: 'Trigger a Big Crunch collapse.', rewardDM: 25, title: 'Time Weaver', req: () => stats.bigCrunchesDone >= 1, unlocked: false },
+      { id: 'auto_bot', name: 'Hands-Free Cosmos', icon: '🤖', desc: 'Unlock the Auto-Stardust Harvester.', rewardDM: 15, title: 'Cybernetic Deity', req: () => artifacts[0].level >= 1, unlocked: false },
+      { id: 'dust_1b', name: 'Infinity Hoarder', icon: '⏳', desc: 'Accumulate 1 Billion lifetime Stardust.', rewardDM: 50, title: 'Cosmic Billionaire', req: () => stats.lifetimeStardust >= 1000000000, unlocked: false },
+      { id: 'void_ruler', name: 'Void Conqueror', icon: '🌌', desc: 'Own at least 1 Quasar or Void Rift.', rewardDM: 75, title: 'Void Conqueror', req: () => anomalyUpgrades[1].count > 0 || anomalyUpgrades[3].count > 0, unlocked: false },
+      { id: 'dm_100', name: 'Master of Reality', icon: '👑', desc: 'Acquire 100 total Dark Matter.', rewardDM: 
